@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/tls"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -9,13 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/microsoftarchive/ttlcache"
 	"github.com/ory/graceful"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -24,14 +22,23 @@ func index(w http.ResponseWriter, r *http.Request) {
 	/         - GET index document
 	/s/<path> - PUT create file [up to 10kb content for ~2 min]
 	/s/<path> - GET fetch file [within 2 min of creation]
+	/p/<path> - PUT stream content to reciever once listening
+	/p/<path> - GET stream content from sender once sending
 	/metrics  - GET metrics
 `))
 }
 
+type receiver struct {
+	receiverChan chan http.ResponseWriter
+	finishedChan chan bool
+	ctx          context.Context
+	cancel       context.CancelFunc
+}
+
 type server struct {
-	log *log.Logger
-	//domain string
-	files *ttlcache.Cache
+	log           *log.Logger
+	files         *ttlcache.Cache
+	pipeReceivers map[string]*receiver
 }
 
 func (s *server) putHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +70,40 @@ func (s *server) getHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
+func (s *server) basePipeHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	if _, ok := s.pipeReceivers[path]; !ok {
+		s.pipeReceivers[path] = &receiver{
+			receiverChan: make(chan http.ResponseWriter),
+			finishedChan: make(chan bool),
+		}
+	}
+	pr := s.pipeReceivers[path]
+
+	// TODO: should block collision (e.g. GET the same path twice)
+	// TODO: should close if either sender or receiver closes
+	switch r.Method {
+	case http.MethodGet:
+		go func() { pr.receiverChan <- w }()
+		// Wait for finish
+		<-pr.finishedChan
+	case http.MethodPut:
+		receiver := <-pr.receiverChan
+		// TODO: Hard code: content-type
+		receiver.Header().Add("Content-Type", "application/octet-stream")
+		_, err := io.Copy(receiver, r.Body)
+		if err != nil {
+			s.log.Printf("hit error during io.Copy: %s", err)
+		}
+		pr.finishedChan <- true
+		delete(s.pipeReceivers, path)
+	default:
+		http.Error(w, fmt.Sprintf("unexpected method used: %s", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+}
+
 func (s *server) baseContentHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -71,30 +112,35 @@ func (s *server) baseContentHandler(w http.ResponseWriter, r *http.Request) {
 		s.putHandler(w, r)
 	default:
 		http.Error(w, fmt.Sprintf("unexpected method used: %s", r.Method), http.StatusMethodNotAllowed)
+		return
 	}
 }
 
 func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("count: %d\n", s.files.Count())))
+	w.Write([]byte(fmt.Sprintf("file_count: %d\n", s.files.Count())))
+	w.Write([]byte(fmt.Sprintf("pipe_count: %d\n", len(s.pipeReceivers))))
 }
 
-func (s *server) getSelfSignedOrLetsEncryptCert(certManager *autocert.Manager) func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		dirCache, ok := certManager.Cache.(autocert.DirCache)
-		if !ok {
-			dirCache = "certs"
-		}
+type readerCtx struct {
+	ctx context.Context
+	r   io.Reader
+}
 
-		keyFile := filepath.Join(string(dirCache), hello.ServerName+"-key.pem")
-		crtFile := filepath.Join(string(dirCache), hello.ServerName+".pem")
-		certificate, err := tls.LoadX509KeyPair(crtFile, keyFile)
-		if err != nil {
-			s.log.Printf("%s\nFalling back to Letsencrypt\n", err)
-			return certManager.GetCertificate(hello)
-		}
-		s.log.Println("Loaded selfsigned certificate.")
-		return &certificate, err
+func (r *readerCtx) Read(p []byte) (n int, err error) {
+	select {
+	case <-r.ctx.Done():
+		return 0, r.ctx.Err()
+	default:
+		return r.r.Read(p)
+	}
+}
+
+// NewCancellableReader will cancel a read if the context is cancelled
+func NewCancellableReader(ctx context.Context, r io.Reader) io.Reader {
+	return &readerCtx{
+		ctx: ctx,
+		r:   r,
 	}
 }
 
@@ -177,8 +223,6 @@ func (s *server) apacheLogHandler(h http.Handler) http.Handler {
 func main() {
 	port := os.Getenv("PORT")
 	verbose := flag.Bool("v", false, "Verbose logging")
-	//domain := flag.String("domain", "localhost.dev", "domain to use on certificate")
-	//listen := flag.String("l", ":443", "network address and port to listen on (TLS)")
 	listenInsecure := flag.String("i", ":"+port, "network address and port to listen on (insecure)")
 	flag.Parse()
 	logFlags := 0
@@ -190,54 +234,24 @@ func main() {
 	logger := log.New(logOut, "[server] ", logFlags)
 
 	s := server{
-		log: logger,
-		//domain: *domain,
-		files: ttlcache.NewCache(120 * time.Second),
+		log:           logger,
+		files:         ttlcache.NewCache(120 * time.Second),
+		pipeReceivers: make(map[string]*receiver),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/s/", s.baseContentHandler)
+	mux.HandleFunc("/p/", s.basePipeHandler)
 	mux.HandleFunc("/metrics", s.metrics)
 
-	// certManager := autocert.Manager{
-	// 	Prompt:     autocert.AcceptTOS,
-	// 	HostPolicy: autocert.HostWhitelist(*domain, "localhost"),
-	// 	Cache:      autocert.DirCache("certs"),
-	// }
-	// tlsConfig := certManager.TLSConfig()
-	// tlsConfig.GetCertificate = s.getSelfSignedOrLetsEncryptCert(&certManager)
-
-	// srv := graceful.WithDefaults(&http.Server{
-	// 	Addr:      *listen,
-	// 	Handler:   s.apacheLogHandler(mux),
-	// 	TLSConfig: tlsConfig,
-	// })
 	srvInsecure := graceful.WithDefaults(&http.Server{
-		Addr: *listenInsecure,
-		//Handler: s.apacheLogHandler(certManager.HTTPHandler(nil)),
+		Addr:    *listenInsecure,
 		Handler: s.apacheLogHandler(mux),
 	})
 
 	logger.Println("main: Starting the server")
-	// var wg sync.WaitGroup
-	// go func() {
-	// 	wg.Add(1)
-	// 	defer wg.Done()
-	// 	if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
-	// 		logger.Fatalln("main: Failed to gracefully shutdown insure server")
-	// 	}
-	// }()
-
 	if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
 		logger.Fatalln("main: Failed to gracefully shutdown insure server")
 	}
-	// wg.Add(1)
-	// if err := graceful.Graceful(func() error {
-	// 	return srv.ListenAndServeTLS("", "")
-	// }, srv.Shutdown); err != nil {
-	// 	logger.Fatalln("main: Failed to gracefully shutdown server")
-	// }
-	// wg.Done()
 	logger.Println("main: Server was shutdown gracefully")
-	// wg.Wait()
 }

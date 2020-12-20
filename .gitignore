@@ -1,3 +1,4 @@
 certs/
 /pair
 /pair-server
+.env
