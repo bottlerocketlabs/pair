@@ -108,7 +108,7 @@ func isInTMUX(env []string) bool {
 func main() {
 	verbose := flag.Bool("v", false, "Verbose logging")
 	stunServer := flag.String("s", "stun:stun.l.google.com:19302", "The stun server to use if hosting")
-	sdpServer := flag.String("sdp", "http://localhost", "The sdp server to use if hosting")
+	sdpServer := flag.String("sdp", "https://pair-server-sw.herokuapp.com", "The sdp server to use if hosting")
 	tmuxSession := flag.String("session", "pair", "The tmux session to create if hosting")
 
 	tmuxAttachCmd := []string{"tmux", "attach-session", "-t", *tmuxSession}
