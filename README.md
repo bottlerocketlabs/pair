@@ -10,10 +10,11 @@ based on work by https://github.com/maxmcd/webtty
 [Demo video](https://drive.google.com/file/d/1cle0Xyy9H3ih6IsoGq8K6UYGbrYNBoN8/view?usp=sharing)
 
 ## How-To
-* requires `pair` and `tmux` installed
+* requires [`pair`](https://github.com/stuart-warren/pair/releases) and `tmux` installed
 * client host must be started in a tmux session
 * client guest must not be started in a tmux session
 
+Start by hosting a session:
 ```sh
 # host
 $ pair
@@ -21,32 +22,19 @@ $ pair
 Share this command with your guest:
   pair http://<some url>
 ```
+Invite a guest by quickly supplying the command output above
 ```sh
 # guest
 $ pair http://<url from host>
 ```
 
-Setup local testing server with [mkcert](https://mkcert.dev/):
+Optionally setup a local testing server and use it:
 ```sh
-mkcert -install
-mkdir -p certs
-cd certs
-mkcert localhost.dev
-mkcert localhost
-mkcert <someotherdomain>
-cd ..
-# append '127.0.0.1 localhost.dev' to /etc/hosts file
-pair-server -v -domain localhost.dev
-```
-
-Run server in production with [acme](https://pkg.go.dev/golang.org/x/crypto/acme/autocert):
-```sh
-# ensure chosen domain is registered and can access public server on ports 80 and 443
-mkdir -p certs
-pair-server -v -domain <chosen-domain>
+$ pair-server -v &
+$ pair -v -sdp http://localhost
 ```
 
 ## TODO
 * refactor
-* add tests
+* add more tests
 * copy command to hosts clipboard
