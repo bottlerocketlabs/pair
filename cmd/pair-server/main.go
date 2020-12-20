@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/microsoftarchive/ttlcache"
@@ -30,9 +29,9 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 type server struct {
-	log    *log.Logger
-	domain string
-	files  *ttlcache.Cache
+	log *log.Logger
+	//domain string
+	files *ttlcache.Cache
 }
 
 func (s *server) putHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,10 +175,11 @@ func (s *server) apacheLogHandler(h http.Handler) http.Handler {
 }
 
 func main() {
+	port := os.Getenv("PORT")
 	verbose := flag.Bool("v", false, "Verbose logging")
-	domain := flag.String("domain", "localhost.dev", "domain to use on certificate")
-	listen := flag.String("l", ":443", "network address and port to listen on (TLS)")
-	listenInsecure := flag.String("i", ":80", "network address and port to listen on (insecure)")
+	//domain := flag.String("domain", "localhost.dev", "domain to use on certificate")
+	//listen := flag.String("l", ":443", "network address and port to listen on (TLS)")
+	listenInsecure := flag.String("i", ":"+port, "network address and port to listen on (insecure)")
 	flag.Parse()
 	logFlags := 0
 	logOut := ioutil.Discard
@@ -190,50 +190,54 @@ func main() {
 	logger := log.New(logOut, "[server] ", logFlags)
 
 	s := server{
-		log:    logger,
-		domain: *domain,
-		files:  ttlcache.NewCache(120 * time.Second),
+		log: logger,
+		//domain: *domain,
+		files: ttlcache.NewCache(120 * time.Second),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/s/", s.baseContentHandler)
 	mux.HandleFunc("/metrics", s.metrics)
 
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*domain, "localhost"),
-		Cache:      autocert.DirCache("certs"),
-	}
-	tlsConfig := certManager.TLSConfig()
-	tlsConfig.GetCertificate = s.getSelfSignedOrLetsEncryptCert(&certManager)
+	// certManager := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist(*domain, "localhost"),
+	// 	Cache:      autocert.DirCache("certs"),
+	// }
+	// tlsConfig := certManager.TLSConfig()
+	// tlsConfig.GetCertificate = s.getSelfSignedOrLetsEncryptCert(&certManager)
 
-	srv := graceful.WithDefaults(&http.Server{
-		Addr:      *listen,
-		Handler:   s.apacheLogHandler(mux),
-		TLSConfig: tlsConfig,
-	})
+	// srv := graceful.WithDefaults(&http.Server{
+	// 	Addr:      *listen,
+	// 	Handler:   s.apacheLogHandler(mux),
+	// 	TLSConfig: tlsConfig,
+	// })
 	srvInsecure := graceful.WithDefaults(&http.Server{
-		Addr:    *listenInsecure,
-		Handler: s.apacheLogHandler(certManager.HTTPHandler(nil)),
+		Addr: *listenInsecure,
+		//Handler: s.apacheLogHandler(certManager.HTTPHandler(nil)),
+		Handler: s.apacheLogHandler(mux),
 	})
 
 	logger.Println("main: Starting the server")
-	var wg sync.WaitGroup
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
-			logger.Fatalln("main: Failed to gracefully shutdown insure server")
-		}
-	}()
+	// var wg sync.WaitGroup
+	// go func() {
+	// 	wg.Add(1)
+	// 	defer wg.Done()
+	// 	if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
+	// 		logger.Fatalln("main: Failed to gracefully shutdown insure server")
+	// 	}
+	// }()
 
-	wg.Add(1)
-	if err := graceful.Graceful(func() error {
-		return srv.ListenAndServeTLS("", "")
-	}, srv.Shutdown); err != nil {
-		logger.Fatalln("main: Failed to gracefully shutdown server")
+	if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
+		logger.Fatalln("main: Failed to gracefully shutdown insure server")
 	}
-	wg.Done()
+	// wg.Add(1)
+	// if err := graceful.Graceful(func() error {
+	// 	return srv.ListenAndServeTLS("", "")
+	// }, srv.Shutdown); err != nil {
+	// 	logger.Fatalln("main: Failed to gracefully shutdown server")
+	// }
+	// wg.Done()
 	logger.Println("main: Server was shutdown gracefully")
-	wg.Wait()
+	// wg.Wait()
 }
