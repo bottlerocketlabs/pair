@@ -6,7 +6,6 @@ go 1.15
 require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/creack/pty v1.1.11
-	github.com/dolmen-go/contextio v0.0.0-20200217195037-68fc5150bcd5 // indirect
 	github.com/microsoftarchive/ttlcache v0.0.0-20180801091818-7dbceb0d5094
 	github.com/ory/graceful v0.1.1
 	github.com/pion/webrtc/v2 v2.2.26

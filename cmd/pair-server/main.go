@@ -242,6 +242,19 @@ type logReqInfo struct {
 	userAgent string
 }
 
+type connectLogRecord struct {
+	ip                    string
+	time                  time.Time
+	method, uri, protocol string
+}
+
+func (c *connectLogRecord) Log(out io.Writer) {
+	apacheFormatPattern := "%s - - [%s] %q Connected\n"
+	timeFormatted := c.time.Format("02/Jan/2006 03:04:05")
+	requestLine := fmt.Sprintf("%s %s %s", c.method, c.uri, c.protocol)
+	fmt.Fprintf(out, apacheFormatPattern, c.ip, timeFormatted, requestLine)
+}
+
 type apacheLogRecord struct {
 	http.ResponseWriter
 
@@ -291,6 +304,14 @@ func (s *server) apacheLogHandler(h http.Handler) http.Handler {
 		}
 
 		startTime := time.Now()
+		connect := &connectLogRecord{
+			ip:       clientIP,
+			time:     startTime,
+			method:   r.Method,
+			uri:      r.RequestURI,
+			protocol: r.Proto,
+		}
+		connect.Log(s.log.Writer())
 		h.ServeHTTP(record, r)
 		finishTime := time.Now()
 
