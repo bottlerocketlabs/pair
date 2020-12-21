@@ -198,8 +198,6 @@ type sessionDescription struct {
 	SDP          string
 	SDPURI       string
 	SDPAnswerURI string
-	// Key          string
-	// Nonce        string
 }
 
 func (sd sessionDescription) Encode() (string, error) {
@@ -258,71 +256,6 @@ func randomString(len int) (string, error) {
 	r := base64.URLEncoding.EncodeToString(b)
 	return r, nil
 }
-
-// func (sd *sessionDescription) GenKeys() error {
-// 	key, err := randomBytes(32)
-// 	if err != nil {
-// 		return fmt.Errorf("could not read random data into key: %w", err)
-// 	}
-// 	sd.Key = hex.EncodeToString(key)
-
-// 	nonce, err := randomBytes(12)
-// 	if err != nil {
-// 		return fmt.Errorf("could not read random data into nonce: %w", err)
-// 	}
-// 	sd.Nonce = hex.EncodeToString(nonce)
-// 	return nil
-// }
-
-// func (sd *sessionDescription) GetCrypto() (nonce []byte, aesgcm cipher.AEAD, err error) {
-// 	// FIXME: is encryption needed if sending key with payload...?
-// 	nonce = []byte{}
-// 	aesgcm = nil
-// 	nonce, err = hex.DecodeString(sd.Nonce)
-// 	if err != nil {
-// 		return nonce, aesgcm, fmt.Errorf("could not decode nonce: %w", err)
-// 	}
-// 	key, err := hex.DecodeString(sd.Key)
-// 	if err != nil {
-// 		return nonce, aesgcm, fmt.Errorf("could not decode key: %w", err)
-// 	}
-// 	block, err := aes.NewCipher(key)
-// 	if err != nil {
-// 		return nonce, aesgcm, fmt.Errorf("could not create cypher from key: %w", err)
-// 	}
-// 	aesgcm, err = cipher.NewGCM(block)
-// 	if err != nil {
-// 		return nonce, aesgcm, fmt.Errorf("could not create GCM from cypher: %w", err)
-// 	}
-// 	return nonce, aesgcm, nil
-// }
-
-// func (sd *sessionDescription) EncryptSDP() error {
-// 	nonce, aesgcm, err := sd.GetCrypto()
-// 	if err != nil {
-// 		return fmt.Errorf("could not get crypto primitives: %w", err)
-// 	}
-// 	plaintxt := []byte(sd.SDP)
-// 	sd.SDP = hex.EncodeToString(aesgcm.Seal(plaintxt[:0], nonce, plaintxt, nil))
-// 	return nil
-// }
-
-// func (sd *sessionDescription) DecryptSDP() error {
-// 	nonce, aesgcm, err := sd.GetCrypto()
-// 	if err != nil {
-// 		return fmt.Errorf("could not get crypto primitives: %w", err)
-// 	}
-// 	ciphertext, err := hex.DecodeString(sd.SDP)
-// 	if err != nil {
-// 		return fmt.Errorf("could not decode sdp: %w", err)
-// 	}
-// 	plaintext, err := aesgcm.Open(ciphertext[:0], nonce, ciphertext, nil)
-// 	if err != nil {
-// 		return fmt.Errorf("could not decrypt cyphertext: %w", err)
-// 	}
-// 	sd.SDP = string(plaintext)
-// 	return nil
-// }
 
 type session struct {
 	stdin, stdout, stderr *os.File
@@ -403,25 +336,25 @@ func genSDPURL(host string) string {
 		panic(fmt.Sprintf("badly formed host provided: %s", host))
 	}
 	randPath, _ := randomString(32)
-	u.Path = path.Join("/s", randPath)
+	u.Path = path.Join("/p", randPath)
 	return u.String()
 }
 
-func getSDP(url string) ([]byte, int, error) {
+func getSDP(url string) ([]byte, error) {
 	var body []byte
 	resp, err := http.Get(url)
 	if err != nil {
-		return body, 0, fmt.Errorf("could not fetch sdp response from %s: %w", url, err)
+		return body, fmt.Errorf("could not fetch sdp response from %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusOK {
-		return body, 0, fmt.Errorf("unexpected response code from sdp server: [%s] %s", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("unexpected response code from sdp server: [%s] %s", resp.Status, string(body))
 	}
 	if err != nil {
-		return body, 0, fmt.Errorf("could not get body of response for sdp: [%s] %w", resp.Status, err)
+		return body, fmt.Errorf("could not get body of response for sdp: [%s] %w", resp.Status, err)
 	}
-	return body, resp.StatusCode, nil
+	return body, nil
 }
 
 func putSDP(url string, body io.Reader) error {
@@ -443,25 +376,6 @@ func putSDP(url string, body io.Reader) error {
 		return fmt.Errorf("unexpected response code from sdp server: [%s] %q %s", resp.Status, url, content)
 	}
 	return nil
-}
-
-func pollSDPServerForResponse(url string) (string, error) {
-	var code = http.StatusNotFound
-	var body []byte
-	for {
-		var err error
-		body, code, err = getSDP(url)
-		if err != nil {
-			return "", fmt.Errorf("failed getting sdp: %w", err)
-		}
-		if code == http.StatusOK {
-			break
-		}
-		if code == http.StatusNotFound {
-			time.Sleep(300 * time.Millisecond)
-		}
-	}
-	return string(body), nil
 }
 
 type hostSession struct {
@@ -488,34 +402,27 @@ func (hs *hostSession) run() error {
 	if err != nil {
 		return fmt.Errorf("could not encode offer: %w", err)
 	}
-	hs.debug.Printf("uploading offer")
-	if err := putSDP(hs.offerSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
-		return fmt.Errorf("could not upload SDP offer: %w", err)
-	}
 	_, err = fmt.Fprintf(hs.stdout, "Share this command with your guest:\n  pair %s\n\n", hs.offerSD.SDPURI)
 	if err != nil {
 		return fmt.Errorf("could not write sdp uri to stdout: %w", err)
 	}
+	hs.debug.Printf("uploading offer")
+	if err := putSDP(hs.offerSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
+		return fmt.Errorf("could not upload SDP offer: %w", err)
+	}
 	hs.debug.Printf("waiting for response")
-	answer, err := pollSDPServerForResponse(hs.offerSD.SDPAnswerURI)
+	answer, err := getSDP(hs.offerSD.SDPAnswerURI)
 	if err != nil {
 		return fmt.Errorf("could not get SDP answer: %w", err)
 	}
 	hs.debug.Printf("got response")
 	var answerSD sessionDescription
-	err = answerSD.Decode(answer)
+	err = answerSD.Decode(string(answer))
 	if err != nil {
 		return fmt.Errorf("could not decode sdp answer: %w", err)
 	}
 	hs.debug.Printf("decoded response")
 	hs.answerSD = answerSD
-	// hs.answerSD.Key = hs.offerSD.Key
-	// hs.answerSD.Nonce = hs.offerSD.Nonce
-	// err = hs.answerSD.DecryptSDP()
-	// if err != nil {
-	// 	return fmt.Errorf("could not decrypt answer sdp: %w", err)
-	// }
-	// hs.debug.Printf("decrypted response")
 	err = hs.setHostRemoteDescriptionAndWait()
 	if err != nil {
 		return fmt.Errorf("could not set host remote description: %w", err)
@@ -560,16 +467,6 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 			return
 		}
 		hs.ptyReady = true
-		// if err := hs.makeRawTerminal(); err != nil {
-		// 	hs.errorChan <- fmt.Errorf("could not make raw terminal: %w", err)
-		// 	return
-		// }
-		// go func() {
-		// 	if _, err := io.Copy(hs.pty, hs.stdin); err != nil {
-		// 		hs.errorChan <- fmt.Errorf("could not copy input to pty: %w", err)
-		// 		return
-		// 	}
-		// }()
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		go func() {
@@ -589,10 +486,6 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 				hs.errorChan <- err
 				return
 			}
-			// if _, err = hs.stdout.Write(buf[0:nr]); err != nil {
-			// 	hs.errorChan <- fmt.Errorf("cannot write to stdout: %w", err)
-			// 	return
-			// }
 			if err = hs.dataChannel.Send(buf[0:nr]); err != nil {
 				hs.errorChan <- fmt.Errorf("could not send to data channel: %w", err)
 				return
@@ -706,8 +599,6 @@ func (hs *hostSession) createOffer() error {
 		SDPURI:       genSDPURL(hs.sdpServer),
 		SDPAnswerURI: genSDPURL(hs.sdpServer),
 	}
-	// hs.offerSD.GenKeys()
-	// hs.offerSD.EncryptSDP()
 	return nil
 }
 
@@ -736,15 +627,11 @@ func (cs *clientSession) run() error {
 	cs.dataChannel.OnClose(cs.dataChannelOnClose())
 	cs.debug.Printf("data channel setup")
 
-	body, code, err := getSDP(cs.offerURL)
-	if code == http.StatusNotFound {
-		return fmt.Errorf("could not find offer on sdp server: %s", body)
-	}
+	body, err := getSDP(cs.offerURL)
 	if err != nil {
 		return fmt.Errorf("could not get sdp from server: %w", err)
 	}
 	cs.debug.Printf("recieved offer")
-	cs.debug.Printf("got code: %d", code)
 	cs.debug.Printf("got body: %s", body)
 	var offerSD sessionDescription
 	err = offerSD.Decode(string(body))
@@ -753,13 +640,6 @@ func (cs *clientSession) run() error {
 	}
 	cs.debug.Printf("decoded offer: %+v", offerSD)
 	cs.offerSD = offerSD
-	// if cs.offerSD.Key != "" {
-	// 	if err := cs.offerSD.DecryptSDP(); err != nil {
-	// 		cs.debug.Printf("decrypting session")
-	// 		return fmt.Errorf("could not decrypt sdp: %w", err)
-	// 	}
-	// 	cs.debug.Printf("decrypted offer")
-	// }
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
 		SDP:  cs.offerSD.SDP,
@@ -780,20 +660,7 @@ func (cs *clientSession) run() error {
 	cs.debug.Printf("local description set")
 	answerSD := sessionDescription{
 		SDP: answer.SDP,
-		// Key:   cs.offerSD.Key,
-		// Nonce: cs.offerSD.Nonce,
 	}
-	// if cs.offerSD.Key != "" {
-	// 	// encrypt with shared key
-	// 	err := answerSD.EncryptSDP()
-	// 	if err != nil {
-	// 		return fmt.Errorf("could not encrypt offer: %w", err)
-	// 	}
-	// 	// Host already has keys, don't upload them
-	// 	answerSD.Key = ""
-	// 	answerSD.Nonce = ""
-	// 	cs.debug.Printf("answer encrypted")
-	// }
 	encodedAnswer, err := answerSD.Encode()
 	if err != nil {
 		return fmt.Errorf("could not encode answer: %w", err)

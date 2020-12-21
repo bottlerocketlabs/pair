@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/microsoftarchive/ttlcache"
@@ -29,16 +30,131 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 type receiver struct {
-	receiverChan chan http.ResponseWriter
-	finishedChan chan bool
-	ctx          context.Context
-	cancel       context.CancelFunc
+	receiverChan    chan http.ResponseWriter
+	finishedChan    chan bool
+	readerConnected bool
+	writerConnected bool
+	ctx             context.Context
+	cancel          context.CancelFunc
+}
+
+func newReciever(r *http.Request) *receiver {
+	ctx, cancel := context.WithCancel(r.Context())
+	return &receiver{
+		receiverChan: make(chan http.ResponseWriter),
+		finishedChan: make(chan bool),
+		ctx:          ctx,
+		cancel:       cancel,
+	}
 }
 
 type server struct {
-	log           *log.Logger
-	files         *ttlcache.Cache
+	log   *log.Logger
+	files *ttlcache.Cache
+
+	rwm           sync.RWMutex
 	pipeReceivers map[string]*receiver
+}
+
+func (s *server) getReciever(path string) (*receiver, bool) {
+	s.rwm.RLock()
+	defer s.rwm.RUnlock()
+	r, ok := s.pipeReceivers[path]
+	return r, ok
+}
+
+func (s *server) setReciever(path string, r *receiver) {
+	s.rwm.Lock()
+	defer s.rwm.Unlock()
+	s.pipeReceivers[path] = r
+}
+
+func (s *server) markReaderConnected(path string) error {
+	s.rwm.Lock()
+	defer s.rwm.Unlock()
+	r, ok := s.pipeReceivers[path]
+	if !ok {
+		return fmt.Errorf("unexpected path")
+	}
+	if r.readerConnected {
+		return fmt.Errorf("already connected")
+	}
+	r.readerConnected = true
+	return nil
+}
+
+func (s *server) markWriterConnected(path string) error {
+	s.rwm.Lock()
+	defer s.rwm.Unlock()
+	r, ok := s.pipeReceivers[path]
+	if !ok {
+		return fmt.Errorf("unexpected path")
+	}
+	if r.writerConnected {
+		return fmt.Errorf("already connected")
+	}
+	r.writerConnected = true
+	return nil
+}
+
+func (s *server) killReciever(path string) {
+	s.rwm.Lock()
+	defer s.rwm.Unlock()
+	r, ok := s.pipeReceivers[path]
+	if !ok {
+		return
+	}
+	r.finishedChan <- true
+	r.cancel()
+	delete(s.pipeReceivers, path)
+	s.log.Printf("disconnecting path %s", path)
+}
+
+func (s *server) basePipeHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	if _, ok := s.getReciever(path); !ok {
+		s.setReciever(path, newReciever(r))
+	}
+	go func() {
+		<-r.Context().Done()
+		s.killReciever(path)
+	}()
+
+	pr, _ := s.getReciever(path)
+	w = NewResponseWriter(pr.ctx, w)
+
+	// TODO: should close if either sender or receiver closes
+	switch r.Method {
+	case http.MethodGet:
+		err := s.markReaderConnected(path)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("unexpected reader: %s", err), http.StatusConflict)
+			return
+		}
+		go func() { pr.receiverChan <- w }()
+		// Wait for finish
+		<-pr.finishedChan
+	case http.MethodPut:
+		err := s.markWriterConnected(path)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("unexpected writer: %s", err), http.StatusConflict)
+			return
+		}
+		receiver := <-pr.receiverChan
+		var contentType string
+		if contentType = r.Header.Get("Content-Type"); contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		receiver.Header().Add("Content-Type", contentType)
+		_, err = io.Copy(receiver, NewReader(pr.ctx, r.Body))
+		if err != nil {
+			s.log.Printf("hit error during io.Copy: %s", err)
+		}
+	default:
+		http.Error(w, fmt.Sprintf("unexpected method used: %s", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
 }
 
 func (s *server) putHandler(w http.ResponseWriter, r *http.Request) {
@@ -68,40 +184,6 @@ func (s *server) getHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(content))
-}
-
-func (s *server) basePipeHandler(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	if _, ok := s.pipeReceivers[path]; !ok {
-		s.pipeReceivers[path] = &receiver{
-			receiverChan: make(chan http.ResponseWriter),
-			finishedChan: make(chan bool),
-		}
-	}
-	pr := s.pipeReceivers[path]
-
-	// TODO: should block collision (e.g. GET the same path twice)
-	// TODO: should close if either sender or receiver closes
-	switch r.Method {
-	case http.MethodGet:
-		go func() { pr.receiverChan <- w }()
-		// Wait for finish
-		<-pr.finishedChan
-	case http.MethodPut:
-		receiver := <-pr.receiverChan
-		// TODO: Hard code: content-type
-		receiver.Header().Add("Content-Type", "application/octet-stream")
-		_, err := io.Copy(receiver, r.Body)
-		if err != nil {
-			s.log.Printf("hit error during io.Copy: %s", err)
-		}
-		pr.finishedChan <- true
-		delete(s.pipeReceivers, path)
-	default:
-		http.Error(w, fmt.Sprintf("unexpected method used: %s", r.Method), http.StatusMethodNotAllowed)
-		return
-	}
 }
 
 func (s *server) baseContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -251,7 +333,7 @@ func main() {
 
 	logger.Println("main: Starting the server")
 	if err := graceful.Graceful(srvInsecure.ListenAndServe, srvInsecure.Shutdown); err != nil {
-		logger.Fatalln("main: Failed to gracefully shutdown insure server")
+		logger.Fatalln("main: Failed to gracefully shutdown server")
 	}
 	logger.Println("main: Server was shutdown gracefully")
 }
