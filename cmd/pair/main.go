@@ -129,6 +129,7 @@ func main() {
 	stdInFD := int(os.Stdin.Fd())
 	session := session{
 		debug:       debug,
+		verbose:     *verbose,
 		sdpServer:   *sdpServer,
 		stdin:       os.Stdin,
 		stdout:      os.Stdout,
@@ -259,6 +260,7 @@ func randomString(len int) (string, error) {
 
 type session struct {
 	stdin, stdout, stderr *os.File
+	verbose               bool
 	debug                 *log.Logger
 	sdpServer             string
 	isTerminal            bool
@@ -372,7 +374,7 @@ func putSDP(url string, body io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("could not read body of response: %w", err)
 	}
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected response code from sdp server: [%s] %q %s", resp.Status, url, content)
 	}
 	return nil
@@ -402,10 +404,16 @@ func (hs *hostSession) run() error {
 	if err != nil {
 		return fmt.Errorf("could not encode offer: %w", err)
 	}
-	_, err = fmt.Fprintf(hs.stdout, "Share this command with your guest:\n  pair %s\n\n", hs.offerSD.SDPURI)
+	verbose := ""
+	if hs.verbose {
+		verbose = "-v"
+	}
+	_, err = fmt.Fprintf(hs.stdout, "Share this command with your guest:\n  pair %s %s\n\n", verbose, hs.offerSD.SDPURI)
 	if err != nil {
 		return fmt.Errorf("could not write sdp uri to stdout: %w", err)
 	}
+	_, _ = fmt.Fprint(hs.stdout, "\nPlease press return key within 20 seconds of your pair starting their session\n")
+	_, _ = bufio.NewReader(hs.stdin).ReadBytes('\n')
 	hs.debug.Printf("uploading offer")
 	if err := putSDP(hs.offerSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
 		return fmt.Errorf("could not upload SDP offer: %w", err)
