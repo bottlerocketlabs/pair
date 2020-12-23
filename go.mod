@@ -1,6 +1,6 @@
 module github.com/stuart-warren/pair
 
-// +heroku install ./cmd/pair-server
+// +heroku install ./cmd/pair-server-simple
 go 1.15
 
 require (
