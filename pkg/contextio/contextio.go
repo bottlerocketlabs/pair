@@ -1,4 +1,4 @@
-package main
+package contextio
 
 import (
 	"context"
@@ -6,34 +6,61 @@ import (
 	"net/http"
 )
 
-type writer struct {
+type responsewriter struct {
 	ctx context.Context
 	w   http.ResponseWriter
+}
+
+type writer struct {
+	ctx context.Context
+	w   io.Writer
+}
+
+type rwcopier struct {
+	responsewriter
 }
 
 type copier struct {
 	writer
 }
 
-func (w *writer) Header() http.Header {
-	return w.w.Header()
+func (rw *responsewriter) Header() http.Header {
+	return rw.w.Header()
 }
 
-func (w *writer) WriteHeader(statusCode int) {
-	w.w.WriteHeader(statusCode)
+func (rw *responsewriter) WriteHeader(statusCode int) {
+	rw.w.WriteHeader(statusCode)
 }
 
 // NewResponseWriter wraps an http.ResponseWriter to handle context cancellation.
 //
 // Context state is checked BEFORE every Write.
 //
-// The returned Writer also implements io.ReaderFrom to allow io.Copy to select
+// The returned ResponseWriter also implements io.ReaderFrom to allow io.Copy to select
 // the best strategy while still checking the context state before every chunk transfer.
 func NewResponseWriter(ctx context.Context, w http.ResponseWriter) http.ResponseWriter {
+	if w, ok := w.(*rwcopier); ok && ctx == w.ctx {
+		return w
+	}
+	return &rwcopier{responsewriter{ctx: ctx, w: w}}
+}
+
+// NewWriter wraps an io.Writer to handle context cancellation.
+//
+// Context state is checked BEFORE every Write.
+//
+// The returned Writer also implements io.ReaderFrom to allow io.Copy to select
+// the best strategy while still checking the context state before every chunk transfer.
+func NewWriter(ctx context.Context, w io.Writer) io.Writer {
 	if w, ok := w.(*copier); ok && ctx == w.ctx {
 		return w
 	}
 	return &copier{writer{ctx: ctx, w: w}}
+}
+
+// Write implements io.Writer, but with context awareness.
+func (rw *responsewriter) Write(p []byte) (n int, err error) {
+	return NewWriter(rw.ctx, rw.w).Write(p)
 }
 
 // Write implements io.Writer, but with context awareness.

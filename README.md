@@ -28,13 +28,32 @@ Invite a guest by quickly supplying the command output above
 $ pair http://<url from host>
 ```
 
-Optionally setup a local testing server and use it:
+Optionally setup a simple local testing server and use it:
 ```sh
-$ pair-server -v &
+$ pair-server-simple -v &
 $ pair -v -sdp http://localhost
 ```
 
+Setup local testing server with [mkcert](https://mkcert.dev/):
+```sh
+mkcert -install
+mkdir -p certs
+cd certs
+mkcert localhost.dev
+mkcert localhost
+mkcert <someotherdomain>
+cd ..
+# append '127.0.0.1 localhost.dev <someotherdomain>' to /etc/hosts file
+pair-server -v -domain localhost.dev
+```
+
+Run server in production with [acme](https://pkg.go.dev/golang.org/x/crypto/acme/autocert):
+```sh
+# ensure chosen domain is registered and can access public server on ports 80 and 443
+mkdir -p certs
+pair-server -v -domain <chosen-domain>
+```
+
 ## TODO
-* refactor
 * add more tests
 * copy command to hosts clipboard

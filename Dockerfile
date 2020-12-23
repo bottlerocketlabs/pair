@@ -16,7 +16,8 @@ RUN apt update && \
 USER pair
 WORKDIR /home/pair
 COPY --from=builder /go/src/github.com/stuart-warren/pair/pair /bin
-COPY --from=builder /go/src/github.com/stuart-warren/pair/pair-server /bin
+# COPY --from=builder /go/src/github.com/stuart-warren/pair/pair-server /bin
+# COPY --from=builder /go/src/github.com/stuart-warren/pair/pair-server-simple /bin
 # ENV DOTFILES_REPO= # FIXME
 ADD entrypoint /bin/entrypoint
 ENTRYPOINT [ "/bin/entrypoint" ]

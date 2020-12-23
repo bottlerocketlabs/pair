@@ -2,6 +2,9 @@ package main
 
 import (
 	"testing"
+
+	"github.com/stuart-warren/pair/pkg/env"
+	"github.com/stuart-warren/pair/pkg/session"
 )
 
 func TestEnviron(t *testing.T) {
@@ -9,7 +12,7 @@ func TestEnviron(t *testing.T) {
 		"TERM=screen-256color",
 		"TMUX=something",
 	}
-	m := envMap(environ)
+	m := env.Map(environ)
 	if len(m) != 2 {
 		t.Errorf("should be 2 entries: %d", len(m))
 	}
@@ -22,7 +25,7 @@ func TestEnviron(t *testing.T) {
 func TestEncodeDecodeSD(t *testing.T) {
 	sdp := "something"
 	uri := "http://localhost"
-	offer := sessionDescription{
+	offer := session.SessionDescription{
 		SDP:    sdp,
 		SDPURI: uri,
 	}
@@ -30,7 +33,7 @@ func TestEncodeDecodeSD(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error encoding offer: %w", err)
 	}
-	var decoded sessionDescription
+	var decoded session.SessionDescription
 	err = decoded.Decode(s)
 	if err != nil {
 		t.Errorf("unexpected error decoding offer: %w", err)

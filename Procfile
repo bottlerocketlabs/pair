@@ -1,1 +1,1 @@
-web: pair-server -v
+web: pair-server-simple -v
