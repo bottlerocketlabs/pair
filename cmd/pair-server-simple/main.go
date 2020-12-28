@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/ory/graceful"
 	"github.com/stuart-warren/pair/pkg/handlers"
 )
@@ -17,6 +18,7 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
+
 	verbose := flag.Bool("v", false, "Verbose logging")
 	listenInsecure := flag.String("i", ":"+port, "network address and port to listen on (insecure)")
 	flag.Parse()
@@ -28,12 +30,22 @@ func main() {
 	}
 	logger := log.New(logOut, "[server] ", logFlags)
 
+	newRelicKey := os.Getenv("NEW_RELIC_KEY")
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("pair-server-simple"),
+		newrelic.ConfigLicense(newRelicKey),
+		newrelic.ConfigDistributedTracerEnabled(true),
+	)
+	if err != nil {
+		log.Fatalf("could not init new relic")
+	}
+
 	s := handlers.NewServer(logger, 120*time.Second)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.Index)
-	mux.HandleFunc("/s/", s.BaseContentHandler)
-	mux.HandleFunc("/p/", s.BasePipeHandler)
-	mux.HandleFunc("/metrics", s.Metrics)
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/", handlers.Index))
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/s/", s.BaseContentHandler))
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/p/", s.BasePipeHandler))
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/metrics", s.Metrics))
 
 	srvInsecure := graceful.WithDefaults(&http.Server{
 		Addr:    *listenInsecure,

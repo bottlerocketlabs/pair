@@ -42,6 +42,9 @@ github.com/marten-seemann/qtls v0.2.3 h1:0yWJ43C62LsZt08vuQJDK1uC1czUc3FJeCLPoNA
 github.com/marten-seemann/qtls v0.2.3/go.mod h1:xzjG7avBwGGbdZ8dTGxlBnLArsVKLvwmjgmPuiQEcYk=
 github.com/microsoftarchive/ttlcache v0.0.0-20180801091818-7dbceb0d5094 h1:52jQVcI+aXFD/PrOmGMb8lyxA66PrLLElYcCfo0aT0c=
 github.com/microsoftarchive/ttlcache v0.0.0-20180801091818-7dbceb0d5094/go.mod h1:446jhWLE7yOSVIu070GCdrAVYBqkKtNPiJuMkauEEp4=
+github.com/newrelic/go-agent v1.11.0 h1:jnd8+H6dB+93UTJHFT1wJoij5spKNN/xZ0nkw0kvt7o=
+github.com/newrelic/go-agent v3.9.0+incompatible h1:W2Zummx9jNATZVX6QVjYksX1TwxJGf4E6x1Wf3CG/jY=
+github.com/newrelic/go-agent v3.9.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HDkTYIMZeSVNffmoS726Y0LzQ=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0 h1:WSHQ+IS43OoUrWtD1/bbclrwK8TTH5hzp+umCiuxHgs=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
