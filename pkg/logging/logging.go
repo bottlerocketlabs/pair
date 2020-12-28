@@ -23,6 +23,7 @@ type logReqInfo struct {
 	userAgent string
 }
 
+// ConnectLogRecord is a simpler log format to record server connections
 type ConnectLogRecord struct {
 	IP                    string
 	Time                  time.Time
@@ -36,6 +37,7 @@ func (c *ConnectLogRecord) Log(out io.Writer) {
 	fmt.Fprintf(out, apacheFormatPattern, c.IP, timeFormatted, requestLine)
 }
 
+// ApacheLogRecord is a complex log format to match the apache request logs
 type ApacheLogRecord struct {
 	http.ResponseWriter
 

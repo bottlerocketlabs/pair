@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/ory/graceful"
 	"github.com/stuart-warren/pair/pkg/handlers"
+	"github.com/stuart-warren/pair/pkg/logging"
 )
 
 func main() {
@@ -28,12 +30,12 @@ func main() {
 		logFlags = log.LstdFlags | log.Lshortfile
 		logOut = os.Stderr
 	}
+	logOut = io.MultiWriter(logOut, logging.NewEUNRLogProcessorWithLicenseKey(os.Getenv("NEW_RELIC_LICENSE_KEY")))
 	logger := log.New(logOut, "[server] ", logFlags)
 
-	newRelicKey := os.Getenv("NEW_RELIC_KEY")
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("pair-server-simple"),
-		newrelic.ConfigLicense(newRelicKey),
+		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
 		newrelic.ConfigDistributedTracerEnabled(true),
 	)
 	if err != nil {
