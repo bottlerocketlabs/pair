@@ -50,8 +50,9 @@ func main() {
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/metrics", s.Metrics))
 
 	srvInsecure := graceful.WithDefaults(&http.Server{
-		Addr:    *listenInsecure,
-		Handler: s.ApacheLogHandler(mux),
+		Addr:     *listenInsecure,
+		Handler:  s.LogrusLogHandler(mux),
+		ErrorLog: logger,
 	})
 
 	logger.Println("main: Starting the server")

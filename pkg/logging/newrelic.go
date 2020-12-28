@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -80,14 +79,14 @@ func (nr NRLogProcessor) Write(b []byte) (n int, err error) {
 	}
 	req.Header.Set(nr.authHeaderKey, nr.authHeaderValue)
 	req.Header.Set("Content-Type", nr.contentTypeValue)
-	resp, err := c.Do(req)
+	_, err = c.Do(req)
 	if err != nil {
 		return none, fmt.Errorf("could not send log to endpoint: %w", err)
 	}
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
-		defer resp.Body.Close()
-		return none, fmt.Errorf("unexpected status code: %s: %s: %w", resp.Status, string(body), err)
-	}
+	// if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+	// 	body, err := ioutil.ReadAll(resp.Body)
+	// 	defer resp.Body.Close()
+	// 	return none, fmt.Errorf("unexpected status code: %s: %s: %w", resp.Status, string(body), err)
+	// }
 	return len(b), nil
 }

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/microsoftarchive/ttlcache"
+	"github.com/sirupsen/logrus"
 	"github.com/stuart-warren/pair/pkg/contextio"
 	"github.com/stuart-warren/pair/pkg/logging"
 	"github.com/stuart-warren/pair/pkg/random"
@@ -227,6 +228,40 @@ func (s *server) Metrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("pipe_count: %d\n", len(s.pipeReceivers))))
 }
 
+func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetOutput(s.log.Writer())
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		clientIP := r.RemoteAddr
+		if colon := strings.LastIndex(clientIP, ":"); colon != -1 {
+			clientIP = clientIP[:colon]
+		}
+		record := &logging.LogRecord{
+			ResponseWriter: w,
+			Status:         http.StatusOK,
+		}
+		startTime := time.Now()
+		h.ServeHTTP(record, r)
+		finishTime := time.Now()
+
+		apacheFormatPattern := "- - [%s] %q\n"
+		requestLine := fmt.Sprintf("%s %s %s", r.Method, r.RequestURI, r.Proto)
+		logger.WithFields(logrus.Fields{
+			"status":    record.Status,
+			"ip":        clientIP,
+			"timestamp": int(finishTime.UTC().UnixNano() / int64(time.Millisecond)),
+			"method":    r.Method,
+			"uri":       r.RequestURI,
+			"proto":     r.Proto,
+			"size":      record.ResponseBytes,
+			"duration":  finishTime.Sub(startTime).Milliseconds(),
+		}).Info(fmt.Sprintf(apacheFormatPattern, clientIP, requestLine))
+
+	}
+	return http.HandlerFunc(fn)
+}
+
 func (s *server) ApacheLogHandler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		clientIP := r.RemoteAddr
@@ -235,14 +270,16 @@ func (s *server) ApacheLogHandler(h http.Handler) http.Handler {
 		}
 
 		record := &logging.ApacheLogRecord{
-			ResponseWriter: w,
-			IP:             clientIP,
-			Time:           time.Time{},
-			Method:         r.Method,
-			URI:            r.RequestURI,
-			Protocol:       r.Proto,
-			Status:         http.StatusOK,
-			ElapsedTime:    time.Duration(0),
+			LogRecord: &logging.LogRecord{
+				ResponseWriter: w,
+				Status:         http.StatusOK,
+			},
+			IP:          clientIP,
+			Time:        time.Time{},
+			Method:      r.Method,
+			URI:         r.RequestURI,
+			Protocol:    r.Proto,
+			ElapsedTime: time.Duration(0),
 		}
 
 		startTime := time.Now()
