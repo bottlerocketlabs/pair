@@ -241,12 +241,21 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			ResponseWriter: w,
 			Status:         http.StatusOK,
 		}
+		apacheFormatPattern := "- - [%s] %q"
+		requestLine := fmt.Sprintf("%s %s %s", r.Method, r.RequestURI, r.Proto)
+
 		startTime := time.Now()
+		logger.WithFields(logrus.Fields{
+			"ip":        clientIP,
+			"timestamp": int(startTime.UTC().UnixNano() / int64(time.Millisecond)),
+			"method":    r.Method,
+			"uri":       r.RequestURI,
+			"proto":     r.Proto,
+			"state":     "connected",
+		}).Info(fmt.Sprintf(apacheFormatPattern, clientIP, requestLine))
+
 		h.ServeHTTP(record, r)
 		finishTime := time.Now()
-
-		apacheFormatPattern := "- - [%s] %q\n"
-		requestLine := fmt.Sprintf("%s %s %s", r.Method, r.RequestURI, r.Proto)
 		logger.WithFields(logrus.Fields{
 			"status":    record.Status,
 			"ip":        clientIP,
@@ -256,6 +265,7 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			"proto":     r.Proto,
 			"size":      record.ResponseBytes,
 			"duration":  finishTime.Sub(startTime).Milliseconds(),
+			"state":     "disconnected",
 		}).Info(fmt.Sprintf(apacheFormatPattern, clientIP, requestLine))
 
 	}
