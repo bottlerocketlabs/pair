@@ -1,7 +1,7 @@
-FROM golang:1.15.6-alpine as builder
+FROM golang:1.15.6 as builder
 WORKDIR /go/src/github.com/stuart-warren/pair/
 COPY . .
-RUN go build ./...
+RUN go build -ldflags="-s -w -X main.version=$(git tag --points-at HEAD) -X main.commit=$(git rev-parse --short HEAD)" ./cmd/pair
 
 FROM ubuntu:20.04
 RUN apt update && \
