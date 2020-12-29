@@ -56,5 +56,4 @@ pair-server -v -domain <chosen-domain>
 
 ## TODO
 * add more tests
-* copy command to hosts clipboard
 * run tmux and host pair within a development docker container to restrict access

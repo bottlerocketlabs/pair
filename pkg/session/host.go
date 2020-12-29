@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/kr/pty"
 	"github.com/pion/webrtc/v2"
 	"github.com/stuart-warren/pair/pkg/handlers"
@@ -45,11 +46,16 @@ func (hs *HostSession) Run() error {
 	if hs.Verbose {
 		verbose = "-v"
 	}
-	_, err = fmt.Fprintf(hs.Stdout, "Share this command with your guest:\n  pair %s %s\n\n", verbose, hs.OfferSD.SDPURI)
+	_, err = fmt.Fprintf(hs.Stderr, "Share this command with your guest:\n\n  pair %s %s\n\n", verbose, hs.OfferSD.SDPURI)
 	if err != nil {
-		return fmt.Errorf("could not write sdp uri to stdout: %w", err)
+		return fmt.Errorf("could not write sdp uri to stderr: %w", err)
 	}
-	_, _ = fmt.Fprint(hs.Stdout, "\nPlease press return key within 20 seconds of your pair starting their session\n")
+	err = clipboard.WriteAll(fmt.Sprintf("pair %s %s", verbose, hs.OfferSD.SDPURI))
+	if err != nil {
+		_, _ = fmt.Fprintf(hs.Stderr, "Failed to write command to clipboard\n\n")
+	}
+	_, _ = fmt.Fprintf(hs.Stderr, "It has been added to your clipboard automatically\n\n")
+	_, _ = fmt.Fprint(hs.Stderr, "Please press return key within 20 seconds of your pair starting their session\n")
 	_, _ = bufio.NewReader(hs.Stdin).ReadBytes('\n')
 	hs.Debug.Printf("uploading offer")
 	if err := hs.putSDP(hs.OfferSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
