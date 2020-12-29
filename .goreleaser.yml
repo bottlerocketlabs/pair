@@ -3,9 +3,31 @@ before:
   hooks:
   - go mod tidy
 builds:
-- env:
+- id: pair
+  binary: pair
+  env:
   - CGO_ENABLED=0
   main: ./cmd/pair/main.go
+  goos:
+  - darwin
+  - linux
+  goarch:
+  - amd64
+- id: pair-server
+  binary: pair-server
+  env:
+  - CGO_ENABLED=0
+  main: ./cmd/pair-server/main.go
+  goos:
+  - darwin
+  - linux
+  goarch:
+  - amd64
+- id: pair-server-simple
+  binary: pair-server-simple
+  env:
+  - CGO_ENABLED=0
+  main: ./cmd/pair-server-simple/main.go
   goos:
   - darwin
   - linux
@@ -16,6 +38,9 @@ archives:
     darwin: Darwin
     linux: Linux
     amd64: x86_64
+  files:
+  - README.md
+  - LICENSE
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -26,3 +51,23 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+    - Merge pull request
+    - Merge branch
+    - go mod tidy
+brews:
+- name: pair
+  tap:
+    owner: stuart-warren
+    name: homebrew-apps
+  folder: Formula
+  homepage:  https://github.com/stuart-warren/pair
+  description: A tool for pair programming
+  license: MIT
+  test: |
+    system "#{bin}/pair -version"
+  dependencies:
+  - name: go
+  install: |-
+    bin.install "pair"
+    bin.install "pair-server"
+    bin.install "pair-server-simple"
