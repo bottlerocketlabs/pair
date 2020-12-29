@@ -59,6 +59,7 @@ brews:
   tap:
     owner: stuart-warren
     name: homebrew-apps
+    token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
   folder: Formula
   homepage:  https://github.com/stuart-warren/pair
   description: A tool for pair programming
