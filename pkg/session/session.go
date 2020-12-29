@@ -62,48 +62,11 @@ func (sd *SessionDescription) Decode(offer string) error {
 	return nil
 }
 
-func getSDP(url string) ([]byte, error) {
-	var body []byte
-	resp, err := http.Get(url)
-	if err != nil {
-		return body, fmt.Errorf("could not fetch sdp response from %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return body, fmt.Errorf("unexpected response code from sdp server: [%s] %s", resp.Status, string(body))
-	}
-	if err != nil {
-		return body, fmt.Errorf("could not get body of response for sdp: [%s] %w", resp.Status, err)
-	}
-	return body, nil
-}
-
-func putSDP(url string, body io.Reader) error {
-	req, err := http.NewRequest(http.MethodPut, url, body)
-	if err != nil {
-		return fmt.Errorf("could not build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "text/plain")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("could not put sdp content to %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not read body of response: %w", err)
-	}
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected response code from sdp server: [%s] %q %s", resp.Status, url, content)
-	}
-	return nil
-}
-
 type Session struct {
 	Stdin, Stdout, Stderr *os.File
 	Verbose               bool
 	Debug                 *log.Logger
+	UserAgent             string
 	SDPServer             string
 	IsTerminal            bool
 	OldTerminalState      *term.State
@@ -120,6 +83,50 @@ func (s *Session) init() error {
 	s.IsTerminal = term.IsTerminal(int(s.Stdin.Fd()))
 	if err := s.createPeerConnection(); err != nil {
 		return fmt.Errorf("could not create peer connection: %w", err)
+	}
+	return nil
+}
+
+func (s *Session) getSDP(url string) ([]byte, error) {
+	var body []byte
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return body, fmt.Errorf("could not build request: %w", err)
+	}
+	req.Header.Set("User-Agent", s.UserAgent)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return body, fmt.Errorf("could not fetch sdp response from %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("unexpected response code from sdp server: [%s] %s", resp.Status, string(body))
+	}
+	if err != nil {
+		return body, fmt.Errorf("could not get body of response for sdp: [%s] %w", resp.Status, err)
+	}
+	return body, nil
+}
+
+func (s *Session) putSDP(url string, body io.Reader) error {
+	req, err := http.NewRequest(http.MethodPut, url, body)
+	if err != nil {
+		return fmt.Errorf("could not build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("User-Agent", s.UserAgent)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not put sdp content to %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("could not read body of response: %w", err)
+	}
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected response code from sdp server: [%s] %q %s", resp.Status, url, content)
 	}
 	return nil
 }

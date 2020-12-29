@@ -2,16 +2,25 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/stuart-warren/pair/pkg/session"
 	"github.com/stuart-warren/pair/pkg/tmux"
 	"golang.org/x/term"
 )
 
+var (
+	// should be populated by goreleaser at build time
+	version string = "0.0.0"
+	commit  string = "deadbeef"
+)
+
 func main() {
+	showVersion := flag.Bool("version", false, "Display the version")
 	verbose := flag.Bool("v", false, "Verbose logging")
 	stunServer := flag.String("s", "stun:stun.l.google.com:19302", "The stun server to use if hosting")
 	sdpServer := flag.String("sdp", "https://pair-server-sw.herokuapp.com", "The sdp server to use if hosting")
@@ -20,6 +29,10 @@ func main() {
 	tmuxAttachCmd := []string{"tmux", "attach-session", "-t", *tmuxSession}
 
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("%s %s (%s)\n", filepath.Base(os.Args[0]), version, commit)
+		os.Exit(0)
+	}
 	logFlags := 0
 	logOut := ioutil.Discard
 	if *verbose {
@@ -35,6 +48,7 @@ func main() {
 	stdInFD := int(os.Stdin.Fd())
 	baseSession := session.Session{
 		Debug:       debug,
+		UserAgent:   fmt.Sprintf("%s/%s (%s)", filepath.Base(os.Args[0]), version, commit),
 		Verbose:     *verbose,
 		SDPServer:   *sdpServer,
 		Stdin:       os.Stdin,

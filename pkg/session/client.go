@@ -38,7 +38,7 @@ func (cs *ClientSession) Run() error {
 	cs.DataChannel.OnClose(cs.dataChannelOnClose())
 	cs.Debug.Printf("data channel setup")
 
-	body, err := getSDP(cs.OfferURL)
+	body, err := cs.getSDP(cs.OfferURL)
 	if err != nil {
 		return fmt.Errorf("could not get sdp from server: %w", err)
 	}
@@ -80,7 +80,7 @@ func (cs *ClientSession) Run() error {
 	if cs.OfferSD.SDPAnswerURI == "" {
 		return fmt.Errorf("no uri provided to upload answer")
 	}
-	if err := putSDP(cs.OfferSD.SDPAnswerURI, bytes.NewBuffer([]byte(encodedAnswer))); err != nil {
+	if err := cs.putSDP(cs.OfferSD.SDPAnswerURI, bytes.NewBuffer([]byte(encodedAnswer))); err != nil {
 		return fmt.Errorf("could not upload SDP answer: %w", err)
 	}
 	cs.Debug.Printf("answer uploaded, waiting for connection")

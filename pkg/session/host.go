@@ -52,11 +52,11 @@ func (hs *HostSession) Run() error {
 	_, _ = fmt.Fprint(hs.Stdout, "\nPlease press return key within 20 seconds of your pair starting their session\n")
 	_, _ = bufio.NewReader(hs.Stdin).ReadBytes('\n')
 	hs.Debug.Printf("uploading offer")
-	if err := putSDP(hs.OfferSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
+	if err := hs.putSDP(hs.OfferSD.SDPURI, bytes.NewBuffer([]byte(offer))); err != nil {
 		return fmt.Errorf("could not upload SDP offer: %w", err)
 	}
 	hs.Debug.Printf("waiting for response")
-	answer, err := getSDP(hs.OfferSD.SDPAnswerURI)
+	answer, err := hs.getSDP(hs.OfferSD.SDPAnswerURI)
 	if err != nil {
 		return fmt.Errorf("could not get SDP answer: %w", err)
 	}
