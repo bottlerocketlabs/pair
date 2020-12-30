@@ -45,7 +45,6 @@ func main() {
 	s := handlers.NewServer(logger, 120*time.Second)
 	mux := http.NewServeMux()
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/", handlers.Index))
-	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/s/", s.BaseContentHandler))
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/p/", s.BasePipeHandler))
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/metrics", s.Metrics))
 

@@ -243,37 +243,33 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			ResponseWriter: w,
 			Status:         http.StatusOK,
 		}
-		timeFormat := "02/Jan/2006 03:04:05"
-		apacheFormatPattern := "%s - - [%s] %q"
-		requestLine := fmt.Sprintf("%s %s %s", r.Method, r.RequestURI, r.Proto)
+		timeFormat := "02/Jan/2006T03:04:05"
+		messagePattern := "time=%s method=%s ip=%q proto=%s uri=%q state=%s"
 
 		startTime := time.Now()
-		logger.WithFields(logrus.Fields{
-			"ip":         clientIP,
-			"timestamp":  int(startTime.UTC().UnixNano() / int64(time.Millisecond)),
-			"method":     r.Method,
-			"uri":        r.RequestURI,
-			"proto":      r.Proto,
-			"state":      "connected",
-			"referer":    r.Referer(),
-			"user-agent": r.UserAgent(),
-		}).Info(fmt.Sprintf(apacheFormatPattern, clientIP, startTime.UTC().Format(timeFormat), requestLine))
+		connectLog := logger.WithFields(logrus.Fields{
+			"ip":           clientIP,
+			"timestamp":    int(startTime.UTC().UnixNano() / int64(time.Millisecond)),
+			"method":       r.Method,
+			"uri":          r.RequestURI,
+			"proto":        r.Proto,
+			"state":        "connected",
+			"referer":      r.Referer(),
+			"user-agent":   r.UserAgent(),
+			"content-type": r.Header.Get("Content-Type"),
+		})
+		connectLog.Info(fmt.Sprintf(messagePattern, startTime.UTC().Format(timeFormat), r.Method, r.Proto, r.RequestURI, "connected"))
 
 		h.ServeHTTP(record, r)
 		finishTime := time.Now()
-		logger.WithFields(logrus.Fields{
-			"status":     record.Status,
-			"ip":         clientIP,
-			"timestamp":  int(finishTime.UTC().UnixNano() / int64(time.Millisecond)),
-			"method":     r.Method,
-			"uri":        r.RequestURI,
-			"proto":      r.Proto,
-			"size":       record.ResponseBytes,
-			"duration":   finishTime.Sub(startTime).Milliseconds(),
-			"state":      "disconnected",
-			"referer":    r.Referer(),
-			"user-agent": r.UserAgent(),
-		}).Info(fmt.Sprintf(apacheFormatPattern, clientIP, finishTime.UTC().Format(timeFormat), requestLine))
+		connectLog.WithFields(logrus.Fields{
+			"status":       record.Status,
+			"timestamp":    int(finishTime.UTC().UnixNano() / int64(time.Millisecond)),
+			"size":         record.ResponseBytes,
+			"duration":     finishTime.Sub(startTime).Milliseconds(),
+			"state":        "disconnected",
+			"content-type": r.Header.Get("Content-Type"),
+		}).Info(fmt.Sprintf(messagePattern, finishTime.UTC().Format(timeFormat), r.Method, r.Proto, r.RequestURI, "disconnected"))
 
 	}
 	return http.HandlerFunc(fn)
