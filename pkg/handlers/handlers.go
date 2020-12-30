@@ -19,6 +19,7 @@ import (
 	"github.com/microsoftarchive/ttlcache"
 	"github.com/sirupsen/logrus"
 	"github.com/stuart-warren/pair/pkg/contextio"
+	"github.com/stuart-warren/pair/pkg/env"
 	"github.com/stuart-warren/pair/pkg/logging"
 	"github.com/stuart-warren/pair/pkg/random"
 	"golang.org/x/crypto/acme/autocert"
@@ -166,12 +167,11 @@ func (s *server) BasePipeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		receiver := <-pr.receiverChan
-		var contentType string
-		if contentType = r.Header.Get("Content-Type"); contentType == "" {
-			if contentType = mime.TypeByExtension(filepath.Ext(r.URL.Path)); contentType == "" {
-				contentType = "application/octet-stream"
-			}
-		}
+		contentType := env.FirstNonBlank(
+			r.Header.Get("Content-Type"),
+			mime.TypeByExtension(filepath.Ext(r.URL.Path)),
+			"application/octet-stream",
+		)
 		receiver.Header().Add("Content-Type", contentType)
 		_, err = io.Copy(receiver, contextio.NewReader(pr.ctx, r.Body))
 		if err != nil {
