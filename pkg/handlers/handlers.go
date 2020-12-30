@@ -268,7 +268,7 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			"size":         record.ResponseBytes,
 			"duration":     finishTime.Sub(startTime).Milliseconds(),
 			"state":        "disconnected",
-			"content-type": r.Header.Get("Content-Type"),
+			"content-type": record.ContentType,
 		}).Info(fmt.Sprintf(messagePattern, finishTime.UTC().Format(timeFormat), r.Method, r.Proto, r.RequestURI, "disconnected"))
 
 	}
