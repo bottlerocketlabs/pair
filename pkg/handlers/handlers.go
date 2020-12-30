@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"path"
@@ -148,7 +149,6 @@ func (s *server) BasePipeHandler(w http.ResponseWriter, r *http.Request) {
 	pr, _ := s.getReciever(path)
 	w = contextio.NewResponseWriter(pr.ctx, w)
 
-	// TODO: should close if either sender or receiver closes
 	switch r.Method {
 	case http.MethodGet:
 		err := s.markReaderConnected(path)
@@ -168,7 +168,9 @@ func (s *server) BasePipeHandler(w http.ResponseWriter, r *http.Request) {
 		receiver := <-pr.receiverChan
 		var contentType string
 		if contentType = r.Header.Get("Content-Type"); contentType == "" {
-			contentType = "application/octet-stream"
+			if contentType = mime.TypeByExtension(filepath.Ext(r.URL.Path)); contentType == "" {
+				contentType = "application/octet-stream"
+			}
 		}
 		receiver.Header().Add("Content-Type", contentType)
 		_, err = io.Copy(receiver, contextio.NewReader(pr.ctx, r.Body))
