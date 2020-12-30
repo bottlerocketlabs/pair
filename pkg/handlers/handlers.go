@@ -256,7 +256,7 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			Status:         http.StatusOK,
 		}
 		timeFormat := "02/Jan/2006T03:04:05"
-		messagePattern := "time=%s method=%s ip=%q proto=%s uri=%q state=%s"
+		messagePattern := "time=%s method=%s ip=%q fwd=%q proto=%s uri=%q state=%s"
 
 		startTime := time.Now()
 		connectLog := logger.WithFields(logrus.Fields{
@@ -271,7 +271,7 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			"user-agent":   r.UserAgent(),
 			"content-type": r.Header.Get("Content-Type"),
 		})
-		connectLog.Info(fmt.Sprintf(messagePattern, startTime.UTC().Format(timeFormat), r.Method, clientIP, r.Proto, r.RequestURI, "connected"))
+		connectLog.Info(fmt.Sprintf(messagePattern, startTime.UTC().Format(timeFormat), r.Method, clientIP, forwardedIP, r.Proto, r.RequestURI, "connected"))
 
 		h.ServeHTTP(record, r)
 		finishTime := time.Now()
@@ -282,7 +282,7 @@ func (s *server) LogrusLogHandler(h http.Handler) http.Handler {
 			"duration":     finishTime.Sub(startTime).Milliseconds(),
 			"state":        "disconnected",
 			"content-type": record.ContentType,
-		}).Info(fmt.Sprintf(messagePattern, finishTime.UTC().Format(timeFormat), r.Method, clientIP, r.Proto, r.RequestURI, "disconnected"))
+		}).Info(fmt.Sprintf(messagePattern, finishTime.UTC().Format(timeFormat), r.Method, clientIP, forwardedIP, r.Proto, r.RequestURI, "disconnected"))
 
 	}
 	return http.HandlerFunc(fn)
