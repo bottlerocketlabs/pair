@@ -9,12 +9,24 @@ based on work by https://github.com/maxmcd/webtty
 
 [Demo video](https://drive.google.com/file/d/1cle0Xyy9H3ih6IsoGq8K6UYGbrYNBoN8/view?usp=sharing)
 
+## Install
+
+### [Homebrew / Linuxbrew](https://brew.sh/)
+
+Should probably work within a [WSL2 terminal on Windows 10](https://docs.microsoft.com/en-us/windows/wsl/install-win10) also
+```
+brew install tmux stuart-warren/apps/pair
+```
+### Manually
+
+Download `pair` binaries from [releases](https://github.com/stuart-warren/pair/releases) and put on path, you need to also install `tmux` for your platform (apt-get etc)
+
 ## How-To
-* requires [`pair`](https://github.com/stuart-warren/pair/releases) and `tmux` installed
+
 * client host must be started in a tmux session
 * client guest must not be started in a tmux session
 
-Start by hosting a session:
+Start by hosting a session within tmux:
 ```sh
 # host
 $ pair
@@ -28,7 +40,9 @@ Invite a guest by quickly supplying the command output above
 $ pair http://<url from host>
 ```
 
-Optionally setup a simple local testing server and use it:
+## Testing/Development
+
+Optionally setup a simple (insecure) local testing server and use it:
 ```sh
 $ pair-server-simple -v &
 $ pair -v -sdp http://localhost
