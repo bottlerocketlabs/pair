@@ -7,7 +7,7 @@
 
 based on work by https://github.com/maxmcd/webtty
 
-[Demo video](https://drive.google.com/file/d/1cle0Xyy9H3ih6IsoGq8K6UYGbrYNBoN8/view?usp=sharing)
+[![Demo Video Screenshot](https://user-images.githubusercontent.com/3208285/103408914-60521a80-4b5c-11eb-82e7-d7564eca424b.png)](https://user-images.githubusercontent.com/3208285/103408760-d3a75c80-4b5b-11eb-8271-b0efcd5330ba.mp4)
 
 ## Install
 
