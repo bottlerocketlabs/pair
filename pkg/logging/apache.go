@@ -30,7 +30,7 @@ type ConnectLogRecord struct {
 }
 
 func (c *ConnectLogRecord) Log(out io.Writer) {
-	apacheFormatPattern := "%s - - [%s] %q Connected\n"
+	apacheFormatPattern := "%s - - [%s] %q Connected"
 	timeFormatted := c.Time.Format("02/Jan/2006 03:04:05")
 	requestLine := fmt.Sprintf("%s %s %s", c.Method, c.URI, c.Protocol)
 	fmt.Fprintf(out, apacheFormatPattern, c.IP, timeFormatted, requestLine)
@@ -47,7 +47,7 @@ type ApacheLogRecord struct {
 }
 
 func (r *ApacheLogRecord) Log(out io.Writer) {
-	apacheFormatPattern := "%s - - [%s] \"%s %d %d\" %f\n"
+	apacheFormatPattern := "%s - - [%s] \"%s %d %d\" %f"
 	timeFormatted := r.Time.Format("02/Jan/2006 03:04:05")
 	requestLine := fmt.Sprintf("%s %s %s", r.Method, r.URI, r.Protocol)
 	fmt.Fprintf(out, apacheFormatPattern, r.IP, timeFormatted, requestLine, r.Status, r.ResponseBytes,

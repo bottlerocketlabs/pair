@@ -1,11 +1,15 @@
 # pair
 
+A tool for sharing your terminal tmux session with others across the interwebs
+
+Useful for pair programming with terminal based editors (vim/emacs)
+
 2 parts
 
-* server for hosting webrtc session descriptions
+* server for sharing webrtc session descriptions (instance hosted on heroku)
 * client for hosting/joining a session
 
-based on work by https://github.com/maxmcd/webtty
+based on work by https://github.com/maxmcd/webtty and https://github.com/nwtgck/go-piping-server
 
 [![Demo Video Screenshot](https://user-images.githubusercontent.com/3208285/103408914-60521a80-4b5c-11eb-82e7-d7564eca424b.png)](https://user-images.githubusercontent.com/3208285/103408760-d3a75c80-4b5b-11eb-8271-b0efcd5330ba.mp4)
 
