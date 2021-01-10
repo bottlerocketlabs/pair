@@ -6,8 +6,8 @@ go 1.15
 require (
 	github.com/atotto/clipboard v0.1.2
 	github.com/btcsuite/btcutil v1.0.2
+	github.com/google/go-cmp v0.2.0
 	github.com/kr/pty v1.1.1
-	github.com/microsoftarchive/ttlcache v0.0.0-20180801091818-7dbceb0d5094
 	github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/ory/graceful v0.1.1
 	github.com/pion/webrtc/v2 v2.2.26

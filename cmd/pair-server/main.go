@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/ory/graceful"
 	"github.com/stuart-warren/pair/pkg/handlers"
@@ -28,11 +27,9 @@ func main() {
 	}
 	logger := log.New(logOut, "[server] ", logFlags)
 
-	s := handlers.NewServer(logger, 120*time.Second)
+	s := handlers.NewServer(logger)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.Index)
-	mux.HandleFunc("/s/", s.BaseContentHandler)
-	mux.HandleFunc("/p/", s.BasePipeHandler)
+	mux.HandleFunc("/", s.BaseHandler)
 	mux.HandleFunc("/metrics", s.Metrics)
 
 	certManager := autocert.Manager{

@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/ory/graceful"
@@ -42,10 +41,9 @@ func main() {
 		log.Fatalf("could not init new relic")
 	}
 
-	s := handlers.NewServer(logger, 120*time.Second)
+	s := handlers.NewServer(logger)
 	mux := http.NewServeMux()
-	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/", handlers.Index))
-	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/p/", s.BasePipeHandler))
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/", s.BaseHandler))
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/metrics", s.Metrics))
 
 	srvInsecure := graceful.WithDefaults(&http.Server{
