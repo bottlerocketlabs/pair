@@ -196,12 +196,13 @@ func (hs *HostSession) dataChannelOnMessage() func(msg webrtc.DataChannelMessage
 					}
 					return
 				}
-				if string(p.Data) == "quit" {
-					hs.ErrorChan <- nil
-					return
-				}
-				hs.ErrorChan <- fmt.Errorf("unexpected string message: %s", string(p.Data))
 			}
+			if string(p.Data) == "quit" {
+				hs.ErrorChan <- nil
+				return
+			}
+			hs.ErrorChan <- fmt.Errorf("unexpected string message: %s", string(p.Data))
+
 		} else {
 			_, err := hs.Pty.Write(p.Data)
 			if err != nil {
