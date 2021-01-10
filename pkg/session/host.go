@@ -145,6 +145,28 @@ func (hs *HostSession) dataChannelOnOpen() func() {
 	}
 }
 
+func parseSizeMessage(msg []byte) ([]uint16, error) {
+	var sizeArr []interface{}
+	err := json.Unmarshal(msg, &sizeArr)
+	var size []uint16
+	if err != nil {
+		return size, err
+	}
+	for _, s := range sizeArr {
+		switch v := s.(type) {
+		case string:
+			size = append(size, 0)
+		case uint16:
+			size = append(size, v)
+		case float64:
+			size = append(size, uint16(v))
+		default:
+			return size, fmt.Errorf("got type %T", v)
+		}
+	}
+	return size, nil
+}
+
 func (hs *HostSession) dataChannelOnMessage() func(msg webrtc.DataChannelMessage) {
 	return func(p webrtc.DataChannelMessage) {
 		// wait for pty to be ready
@@ -172,23 +194,22 @@ func (hs *HostSession) dataChannelOnMessage() func(msg webrtc.DataChannelMessage
 					return
 				}
 				if msg[0] == "set_size" {
-					var size []int
-					_ = json.Unmarshal(p.Data, &size) // FIXME: seems wrong
-					// if err != nil {
-					// 	hs.errorChan <- fmt.Errorf("could not unmarshal json 'set_size' message: %w", err)
-					// 	return
-					// }
+					size, err := parseSizeMessage(p.Data)
+					if err != nil {
+						hs.ErrorChan <- fmt.Errorf("could not unmarshal json 'set_size' message: %w", err)
+						return
+					}
 					ws, err := pty.GetsizeFull(hs.Pty)
 					if err != nil {
 						hs.ErrorChan <- fmt.Errorf("could not get size of terminal: %w", err)
 						return
 					}
-					ws.Rows = uint16(size[1])
-					ws.Cols = uint16(size[2])
+					ws.Rows = size[1]
+					ws.Cols = size[2]
 
 					if len(size) >= 5 {
-						ws.X = uint16(size[3])
-						ws.Y = uint16(size[4])
+						ws.X = size[3]
+						ws.Y = size[4]
 					}
 					hs.Debug.Printf("changing size of terminal %+v\n", ws)
 					if err := pty.Setsize(hs.Pty, ws); err != nil {
@@ -202,7 +223,6 @@ func (hs *HostSession) dataChannelOnMessage() func(msg webrtc.DataChannelMessage
 				return
 			}
 			hs.ErrorChan <- fmt.Errorf("unexpected string message: %s", string(p.Data))
-
 		} else {
 			_, err := hs.Pty.Write(p.Data)
 			if err != nil {
