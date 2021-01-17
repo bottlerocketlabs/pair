@@ -1,5 +1,8 @@
 #!/bin/bash
 
+COMMAND="pair"
+[[ ! -z "${1}" ]] && COMMAND="${@}"
+
 set -euxo pipefail
 # bootstrap machine from repo
 DOTFILES_DIR="${HOME}/.dotfiles"
@@ -12,4 +15,4 @@ fi
 [[ ! -d "${DOTFILES_DIR}" ]] && git clone ${DOTFILES_REPO} ${DOTFILES_DIR}
 ${DOTFILES_DIR}/install
 
-tmux new -A -s 1 pair
+tmux new -A -s 1 ${COMMAND}
