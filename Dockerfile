@@ -8,9 +8,12 @@ RUN apt update && \
     apt install -y \
     bash \
     ca-certificates \
+    curl \
+    git \
     sudo \
     tmux \
     vim \
+    wget \
     zsh && \
     adduser --home /home/pair --gecos "" --disabled-password pair
 USER pair
