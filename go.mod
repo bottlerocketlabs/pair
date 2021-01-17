@@ -16,3 +16,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf
 )
+
+replace (
+	github.com/atotto/clipboard => github.com/stuart-warren/clipboard v0.1.3
+)

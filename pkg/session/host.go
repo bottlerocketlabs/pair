@@ -52,9 +52,10 @@ func (hs *HostSession) Run() error {
 	}
 	err = clipboard.WriteAll(fmt.Sprintf("pair %s %s", verbose, hs.OfferSD.SDPURI))
 	if err != nil {
-		_, _ = fmt.Fprintf(hs.Stderr, "Failed to write command to clipboard\n\n")
+		_, _ = fmt.Fprintf(hs.Stderr, "Failed to write command to clipboard: %s\n\n", err)
+	} else {
+		_, _ = fmt.Fprintf(hs.Stderr, "It has been added to your clipboard automatically\n\n")
 	}
-	_, _ = fmt.Fprintf(hs.Stderr, "It has been added to your clipboard automatically\n\n")
 	_, _ = fmt.Fprint(hs.Stderr, "Please press return key within 20 seconds of your pair starting their session\n")
 	_, _ = bufio.NewReader(hs.Stdin).ReadBytes('\n')
 	hs.Debug.Printf("uploading offer")
