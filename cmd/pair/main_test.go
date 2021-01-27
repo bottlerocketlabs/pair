@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/stuart-warren/pair/pkg/env"
-	"github.com/stuart-warren/pair/pkg/session"
+	"github.com/bottlerocketlabs/pair/pkg/env"
+	"github.com/bottlerocketlabs/pair/pkg/session"
 )
 
 func TestEnviron(t *testing.T) {

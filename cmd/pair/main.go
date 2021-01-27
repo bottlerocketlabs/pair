@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/stuart-warren/pair/pkg/session"
-	"github.com/stuart-warren/pair/pkg/tmux"
+	"github.com/bottlerocketlabs/pair/pkg/session"
+	"github.com/bottlerocketlabs/pair/pkg/tmux"
 	"golang.org/x/term"
 )
 

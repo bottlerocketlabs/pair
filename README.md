@@ -19,11 +19,11 @@ based on work by https://github.com/maxmcd/webtty and https://github.com/nwtgck/
 
 Should probably work within a [WSL2 terminal on Windows 10](https://docs.microsoft.com/en-us/windows/wsl/install-win10) also
 ```
-brew install tmux stuart-warren/apps/pair
+brew install tmux bottlerocketlabs/apps/pair
 ```
 ### Manually
 
-Download `pair` binaries from [releases](https://github.com/stuart-warren/pair/releases) and put on path, you need to also install `tmux` for your platform (apt-get etc)
+Download `pair` binaries from [releases](https://github.com/bottlerocketlabs/pair/releases) and put on path, you need to also install `tmux` for your platform (apt-get etc)
 
 ## How-To
 

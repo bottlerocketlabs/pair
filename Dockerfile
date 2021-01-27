@@ -1,8 +1,8 @@
 FROM golang:1.15.6 as builder
-WORKDIR /go/src/github.com/stuart-warren/pair/
+WORKDIR /go/src/github.com/bottlerocketlabs/pair/
 COPY . .
 RUN go build -ldflags="-s -w -X main.version=$(git tag --points-at HEAD) -X main.commit=$(git rev-parse --short HEAD)" ./cmd/pair
-RUN go get -v github.com/stuart-warren/remote-pbcopy/cmd/pbcopy
+RUN go get -v github.com/bottlerocketlabs/remote-pbcopy/cmd/pbcopy
 
 FROM ubuntu:20.04
 ENV UNAME="pair"
@@ -22,7 +22,7 @@ RUN apt update && \
     echo "$UNAME  ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/$UNAME
 USER $UNAME
 WORKDIR /home/$UNAME
-COPY --from=builder /go/src/github.com/stuart-warren/pair/pair /bin
+COPY --from=builder /go/src/github.com/bottlerocketlabs/pair/pair /bin
 COPY --from=builder /go/bin/pbcopy /bin
 # ENV DOTFILES_REPO= # FIXME
 ADD entrypoint /bin/entrypoint

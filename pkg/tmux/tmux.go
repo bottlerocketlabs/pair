@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/stuart-warren/pair/pkg/env"
+	"github.com/bottlerocketlabs/pair/pkg/env"
 )
 
 func GetCurrentSession() (string, error) {

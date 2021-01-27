@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/bottlerocketlabs/pair/pkg/handlers"
+	"github.com/bottlerocketlabs/pair/pkg/logging"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/ory/graceful"
-	"github.com/stuart-warren/pair/pkg/handlers"
-	"github.com/stuart-warren/pair/pkg/logging"
 )
 
 func main() {

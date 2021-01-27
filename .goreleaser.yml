@@ -57,11 +57,11 @@ changelog:
 brews:
 - name: pair
   tap:
-    owner: stuart-warren
+    owner: bottlerocketlabs
     name: homebrew-apps
     token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
   folder: Formula
-  homepage:  https://github.com/stuart-warren/pair
+  homepage:  https://github.com/bottlerocketlabs/pair
   description: A tool for pair programming
   license: MIT
   test: |

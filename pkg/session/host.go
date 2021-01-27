@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
+	"github.com/bottlerocketlabs/pair/pkg/handlers"
+	"github.com/bottlerocketlabs/pair/pkg/tmux"
 	"github.com/kr/pty"
 	"github.com/pion/webrtc/v2"
-	"github.com/stuart-warren/pair/pkg/handlers"
-	"github.com/stuart-warren/pair/pkg/tmux"
 )
 
 type HostSession struct {

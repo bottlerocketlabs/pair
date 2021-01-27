@@ -16,12 +16,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bottlerocketlabs/pair/pkg/contextio"
+	"github.com/bottlerocketlabs/pair/pkg/env"
+	"github.com/bottlerocketlabs/pair/pkg/logging"
+	"github.com/bottlerocketlabs/pair/pkg/random"
 	"github.com/microsoftarchive/ttlcache"
 	"github.com/sirupsen/logrus"
-	"github.com/stuart-warren/pair/pkg/contextio"
-	"github.com/stuart-warren/pair/pkg/env"
-	"github.com/stuart-warren/pair/pkg/logging"
-	"github.com/stuart-warren/pair/pkg/random"
 	"golang.org/x/crypto/acme/autocert"
 )
 

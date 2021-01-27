@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/bottlerocketlabs/pair/pkg/handlers"
 	"github.com/ory/graceful"
-	"github.com/stuart-warren/pair/pkg/handlers"
 	"golang.org/x/crypto/acme/autocert"
 )
 

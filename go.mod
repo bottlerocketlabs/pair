@@ -1,4 +1,4 @@
-module github.com/stuart-warren/pair
+module github.com/bottlerocketlabs/pair
 
 // +heroku install ./cmd/pair-server-simple
 go 1.15
