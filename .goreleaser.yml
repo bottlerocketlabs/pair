@@ -2,32 +2,51 @@
 before:
   hooks:
   - go mod tidy
+project_name: &name pair
+brews:
+- name: *name
+  tap:
+    owner: bottlerocketlabs
+    name: homebrew-apps
+    token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
+  folder: Formula
+  homepage: &homepage https://github.com/bottlerocketlabs/pair
+  description: &description A tool for terminal based pair programming
+  license: &license MIT
+  test: |
+    system "#{bin}/pair -version"
+  dependencies:
+  - name: go
+  install: |-
+    bin.install "pair"
+    bin.install "pair-server"
+    bin.install "pair-server-simple"
 builds:
 - id: pair
+  main: ./cmd/pair/main.go
   binary: pair
   env:
   - CGO_ENABLED=0
-  main: ./cmd/pair/main.go
   goos:
   - darwin
   - linux
   goarch:
   - amd64
 - id: pair-server
+  main: ./cmd/pair-server/main.go
   binary: pair-server
   env:
   - CGO_ENABLED=0
-  main: ./cmd/pair-server/main.go
   goos:
   - darwin
   - linux
   goarch:
   - amd64
 - id: pair-server-simple
+  main: ./cmd/pair-server-simple/main.go
   binary: pair-server-simple
   env:
   - CGO_ENABLED=0
-  main: ./cmd/pair-server-simple/main.go
   goos:
   - darwin
   - linux
@@ -55,43 +74,34 @@ changelog:
     - go mod tidy
 nfpms:
 - id: deb
-  package_name: pair
   formats:
   - deb
+  description: *description
+  maintainer: "Stuart Warren"
+  license: *license
+  homepage: *homepage
 - id: apk
-  package_name: pair
+  file_name_template: "{{ .ProjectName }}-{{ .Version }}"
+  replacements:
+      amd64: x86_64
   formats:
   - apk
+  description: *description
+  maintainer: "Stuart Warren"
+  license: *license
+  homepage: *homepage
 publishers:
 - name: deb
   ids:
   - deb
-  cmd: hack/publish_deb {{ abs .ArtifactPath }} {{ .ArtifactName }} {{ .Arch }}
+  cmd: hack/publish_deb {{ abs .ArtifactPath }} {{ .ArtifactName }} {{ replace .Arch "x86_64" "amd64" }}
   env:
   - ARTIFACTORY_USERNAME={{ .Env.ARTIFACTORY_USERNAME }}
   - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
 - name: apk
   ids:
   - apk
-  cmd: hack/publish_apk {{ abs .ArtifactPath }} {{ .ArtifactName }} {{ .Arch }}
+  cmd: hack/publish_apk {{ abs .ArtifactPath }} {{ .ArtifactName }} {{ replace .Arch "amd64" "x86_64" }}
   env:
   - ARTIFACTORY_USERNAME={{ .Env.ARTIFACTORY_USERNAME }}
   - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
-brews:
-- name: pair
-  tap:
-    owner: bottlerocketlabs
-    name: homebrew-apps
-    token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
-  folder: Formula
-  homepage:  https://github.com/bottlerocketlabs/pair
-  description: A tool for pair programming
-  license: MIT
-  test: |
-    system "#{bin}/pair -version"
-  dependencies:
-  - name: go
-  install: |-
-    bin.install "pair"
-    bin.install "pair-server"
-    bin.install "pair-server-simple"
