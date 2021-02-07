@@ -17,4 +17,4 @@ require (
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf
 )
 
-replace github.com/atotto/clipboard => github.com/stuart-warren/clipboard v0.1.4
+replace github.com/atotto/clipboard => github.com/stuart-warren/clipboard v0.1.5
