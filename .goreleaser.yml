@@ -53,7 +53,9 @@ builds:
   goarch:
   - amd64
 archives:
-- replacements:
+- builds:
+  - pair
+  replacements:
     darwin: Darwin
     linux: Linux
   files:
