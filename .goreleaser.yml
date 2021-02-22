@@ -19,8 +19,6 @@ brews:
   - name: go
   install: |-
     bin.install "pair"
-    bin.install "pair-server"
-    bin.install "pair-server-simple"
 builds:
 - id: pair
   main: ./cmd/pair/main.go
